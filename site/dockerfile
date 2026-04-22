@@ -1,0 +1,12 @@
+FROM gcc:latest AS builder
+WORKDIR /build
+COPY . .
+RUN make main
+
+FROM gcc:latest
+WORKDIR /app
+# Копируем всё из билдера
+COPY --from=builder /build/ .
+RUN chmod +x main
+
+CMD ["./main", "80", "8"]

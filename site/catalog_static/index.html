@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ Mini App</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #2c3e50; color: white; }
+        .card { background: #34495e; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; width: 80%; }
+        h1 { color: #ecf0f1; margin-bottom: 10px; }
+        #user-name { color: #f1c40f; font-size: 1.2rem; font-weight: bold; }
+    </style>
+    <!-- ИСПРАВЛЕНО: Правильный путь к SDK -->
+    <script src="https://telegram.org"></script>
+</head>
+<body>
+    <div class="card">
+        <h1>Mini App Test</h1>
+        <p>Привет, <span id="user-name">Гость</span>!</p>
+        <p id="status">Отправка данных на сервер...</p>
+    </div>
+
+    <script>
+    try {
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        
+        const initData = tg.initData || "no_data_in_desktop_browser";
+
+        document.getElementById('status').innerText = "Пытаюсь отправить POST...";
+
+        fetch('/auth', {
+            method: 'POST',
+            mode: 'cors', // Добавь для надежности
+            headers: {
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify({ auth_data: initData })
+        })
+        .then(r => {
+            document.getElementById('status').innerText = "POST УШЕЛ! Статус: " + r.status;
+        })
+        .catch(e => {
+            document.getElementById('status').innerText = "ОШИБКА FETCH: " + e.message;
+        });
+    } catch (e) {
+        document.getElementById('status').innerText = "КРИТИЧЕСКАЯ ОШИБКА JS: " + e.message;
+    }
+</script>
+
+</body>
+</html>

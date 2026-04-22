@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # 1. Твой Бот
+  my_bot:
+    build: ./bot           # Путь до папки с Dockerfile бота
+    container_name: bot
+    restart: always
+    volumes:
+      - ./bot:/app:Z
+    environment:
+      - TOKEN=${BOT_TOKEN}
+      - TOKEN_AI=${TOKEN_AI}
+      - admin_id=${admin_id}
+    networks:
+      - app_network
+
+  # 2. Твой Сайт (на базе Nginx или твоего образа)
+  my_site:
+    build: ./site          # Путь до папки с Dockerfile сайта
+    container_name: site
+    stop_signal: SIGKILL
+    restart: always
+    networks:
+      - app_network
+
+  # 3. Туннель (Playit.gg для вывода во внешку без карты)
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: always
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_TOKEN}
+    command:
+      - http
+      - site:80
+    networks:
+      - app_network
+networks:
+  app_network:
+    driver: bridge
