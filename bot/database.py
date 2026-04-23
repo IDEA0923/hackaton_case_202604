@@ -10,10 +10,12 @@ class Database:
     async def aread(self, request: str):
         async with self.lock: 
             return self.cur.execute(request ).fetchall()
-    async def awrite(self, request: str):
+    # В классе Database (в твоем файле)
+    async def awrite(self, request: str, params: tuple = ()):
         async with self.lock:
-            self.cur.execute(request )
+            self.cur.execute(request, params)
             self.conn.commit()
+            return self.cur.lastrowid  # Возвращает ID последней вставки
     def read(self ,request : str):
         return self.cur.execute(request).fetchall()
     def write(self , request: str):
@@ -30,7 +32,7 @@ try:
     db.write("CREATE TABLE IF NOT EXISTS teachers_to_class(users_id INTEGER , class_id  INTEGER)")#учителя ( для назначения ДЗ на группу )
     db.write("CREATE TABLE IF NOT EXISTS teachers_to_student(users_id INTEGER , class_id  INTEGER)")#учителя ( для назначения ДЗ на человека )
     db.write("CREATE TABLE IF NOT EXISTS parents(users_id INTEGER , student_id  INTEGER)")# для родоков ( уведомления и тп )
-    db.write("CREATE TABLE IF NOT EXISTS tasks(task_id INTEGER , foruser_id  INTEGER, fromuser_id  INTEGER , graded INTEGER , grade INTEGER, comment INTEGER )")# имя_таска , для_кого , от_кого , проевренно ? , оценка , commentid=  taskid
+    db.write("CREATE TABLE IF NOT EXISTS tasks( foruser_id  INTEGER, fromuser_id  INTEGER ,task_start INTEGER , task_end INTEGER, graded INTEGER , grade INTEGER, comment INTEGER )")# имя_таска , для_кого , от_кого , проевренно ? , оценка , commentid=  taskid
 except:
     print("[?]DATABASE : may be already created ")
 

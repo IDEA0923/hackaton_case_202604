@@ -15,3 +15,5 @@ async def is_regged(user_id : int)->bool:
     print(str(response))
     return response != []
 
+async def get_role(user_id : int)->int:
+    return int((await database.db.aread(f"SELECT * FROM users WHERE id = {user_id}"))[0][1])

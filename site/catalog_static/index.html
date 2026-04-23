@@ -3,51 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C++ Mini App</title>
+    <title>Advancer - Умный трекер</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #2c3e50; color: white; }
-        .card { background: #34495e; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; width: 80%; }
-        h1 { color: #ecf0f1; margin-bottom: 10px; }
-        #user-name { color: #f1c40f; font-size: 1.2rem; font-weight: bold; }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1e272e;color:#fff;padding:16px;max-width:500px;margin:0 auto}
+        .card{background:#2c3e50;border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:0 4px 15px rgba(0,0,0,0.3)}
+        h1{font-size:24px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+        .badge{background:#f1c40f;color:#000;padding:4px 12px;border-radius:30px;font-size:14px;font-weight:bold}
+        button{background:#3498db;border:none;color:#fff;padding:12px;border-radius:14px;font-size:16px;width:100%;margin:6px 0;cursor:pointer;font-weight:bold}
+        button.gray{background:#7f8c8d}
+        input,select{width:100%;padding:12px;margin:6px 0;border:none;border-radius:12px;font-size:16px;background:#34495e;color:#fff}
+        ul{list-style:none;margin-top:12px}
+        li{background:#34495e;padding:12px;border-radius:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+        .done{text-decoration:line-through;opacity:0.6}
+        .tg-link{background:#2c3e50;text-align:center;padding:16px;border-radius:20px;margin-top:16px}
+        .tg-link a{color:#f1c40f;font-weight:bold;font-size:18px;text-decoration:none}
+        .small{font-size:13px;color:#bdc3c7;margin-top:6px}
     </style>
-    <!-- ИСПРАВЛЕНО: Правильный путь к SDK -->
-    <script src="https://telegram.org"></script>
 </head>
 <body>
     <div class="card">
-        <h1>Mini App Test</h1>
-        <p>Привет, <span id="user-name">Гость</span>!</p>
-        <p id="status">Отправка данных на сервер...</p>
+        <h1>📚 Advancer <span class="badge" id="roleDisplay">Ученик</span></h1>
+        <div id="userInfo" style="margin-top:6px;"></div>
+    </div>
+
+    <div class="card" id="taskPanel">
+        <h2>📋 Мои задачи</h2>
+        <button id="loadBtn">🔄 Загрузить</button>
+        <ul id="taskList"><li style="color:#bdc3c7;text-align:center">Нажмите "Загрузить"</li></ul>
+        
+        <h2 style="margin-top:20px;">➕ Новая задача</h2>
+        <input id="titleInp" placeholder="Название">
+        <input id="subjInp" placeholder="Предмет">
+        <input type="datetime-local" id="deadInp">
+        <button id="addBtn">Создать задачу</button>
+    </div>
+
+    <div class="tg-link">
+        <p>🤖 Основной помощник</p>
+        <a href="https://t.me/YourBotUsername" target="_blank" id="botLink">@YourBotUsername</a>
+        <div class="small">AI, напоминания и аналитика</div>
     </div>
 
     <script>
-    try {
-        const tg = window.Telegram.WebApp;
-        tg.ready();
+        // ====== TELEGRAM MINI APP INIT ======
+        try {
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+                // Можно использовать данные пользователя
+                if (tg.initDataUnsafe?.user) {
+                    document.getElementById('userInfo').innerHTML = 
+                        '<small>👤 ' + tg.initDataUnsafe.user.first_name + '</small>';
+                }
+            }
+        } catch(e) {
+            console.log('Не Mini App');
+        }
+
+        // ====== НАСТРОЙКИ ======
+        const BOT_USERNAME = 'AdvancerTrackerBot'; // замени на свой
+        document.getElementById('botLink').href = `https://t.me/${BOT_USERNAME}`;
+        document.getElementById('botLink').textContent = `@${BOT_USERNAME}`;
+
+        // Получаем параметры из URL (user_id, role) либо из Telegram
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id') || (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) || '123';
+        const userRole = urlParams.get('role') || '1';
+        const roleNames = {1:'Ученик',2:'Учитель',3:'Родитель'};
+        document.getElementById('roleDisplay').textContent = roleNames[userRole] || 'Гость';
+        if (!document.getElementById('userInfo').innerHTML) {
+            document.getElementById('userInfo').innerHTML = '<small>ID: '+userId+'</small>';
+        }
+
+        let tasks = [
+            { id: 1, title: 'Решить уравнение', subject: 'Алгебра', deadline: '2026-04-25 14:00', done: false },
+            { id: 2, title: 'Прочитать параграф 5', subject: 'История', deadline: '2026-04-26 09:00', done: true }
+        ];
+
+        function renderTasks() {
+            const list = document.getElementById('taskList');
+            list.innerHTML = '';
+            if (tasks.length === 0) {
+                list.innerHTML = '<li style="color:#bdc3c7;text-align:center">Нет задач</li>';
+                return;
+            }
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.innerHTML = '<span class="' + (task.done ? 'done' : '') + '"><strong>' + task.title + '</strong> (' + task.subject + ')<br><small>📅 ' + task.deadline + '</small></span>' + (!task.done ? '<button class="gray" style="width:auto;padding:6px 12px;" data-id="' + task.id + '">✅</button>' : '');
+                list.appendChild(li);
+            });
+
+            document.querySelectorAll('#taskList .gray').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const id = parseInt(this.dataset.id);
+                    const task = tasks.find(t => t.id === id);
+                    if (task) {
+                        task.done = true;
+                        renderTasks();
+                        fetch('/api/tasks/' + id, {
+                            method: 'PUT',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({done: true})
+                        }).catch(() => {});
+                    }
+                });
+            });
+        }
+
+        function addTask() {
+            const title = document.getElementById('titleInp').value.trim();
+            const subject = document.getElementById('subjInp').value.trim() || 'Без предмета';
+            const deadline = document.getElementById('deadInp').value || new Date().toISOString().slice(0,16);
+            if (!title) return alert('Введите название');
+            
+            const newTask = {
+                id: Date.now(),
+                title: title,
+                subject: subject,
+                deadline: deadline.replace('T', ' '),
+                done: false
+            };
+            tasks.push(newTask);
+            document.getElementById('titleInp').value = '';
+            document.getElementById('subjInp').value = '';
+            document.getElementById('deadInp').value = '';
+            renderTasks();
+            fetch('/api/tasks', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(newTask)
+            }).catch(() => {});
+        }
+
+        document.getElementById('loadBtn').addEventListener('click', renderTasks);
+        document.getElementById('addBtn').addEventListener('click', addTask);
         
-        const initData = tg.initData || "no_data_in_desktop_browser";
-
-        document.getElementById('status').innerText = "Пытаюсь отправить POST...";
-
-        fetch('/auth', {
-            method: 'POST',
-            mode: 'cors', // Добавь для надежности
-            headers: {
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            },
-            body: JSON.stringify({ auth_data: initData })
-        })
-        .then(r => {
-            document.getElementById('status').innerText = "POST УШЕЛ! Статус: " + r.status;
-        })
-        .catch(e => {
-            document.getElementById('status').innerText = "ОШИБКА FETCH: " + e.message;
-        });
-    } catch (e) {
-        document.getElementById('status').innerText = "КРИТИЧЕСКАЯ ОШИБКА JS: " + e.message;
-    }
-</script>
-
+        renderTasks();
+    </script>
 </body>
 </html>

@@ -9,7 +9,7 @@ client = AsyncOpenAI(
 async def  get_AI_answer(request : str):
     try:
         response = await client.chat.completions.create(
-                model="openrouter/elephant-alpha",
+                model="tencent/hy3-preview:free",
                 messages=[
                     {"role": "user", "content": request}
                 ]
