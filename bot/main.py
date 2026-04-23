@@ -88,6 +88,7 @@ async def st_reg_2(mess : Message , state: FSMContext):
     ans = await users_func.registration(mess.from_user.id , r)
     if ans == 0:
         await mess.answer("DONE\n\nвы зарегестрированны" , reply_markup=ReplyKeyboardRemove())
+        await command_start(mess , state)
     else:
         await mess.answer(f"ERROR in registration : {ans}")
         await alerts.alert_for_all_admins(F"[-]ERROR:\n<blockquote>error in registrtion at {mess.from_user.id} \n error code: {ans} </blockquote>")
