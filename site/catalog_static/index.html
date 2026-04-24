@@ -8,17 +8,16 @@
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1e272e;color:#fff;padding:16px;max-width:500px;margin:0 auto}
         .card{background:#2c3e50;border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:0 4px 15px rgba(0,0,0,0.3)}
-        h1{font-size:24px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-        .badge{background:#f1c40f;color:#000;padding:4px 12px;border-radius:30px;font-size:14px;font-weight:bold}
+        h1{font-size:24px;margin-bottom:8px}
+        .badge{background:#f1c40f;color:#000;padding:4px 12px;border-radius:30px;font-size:14px;font-weight:bold;display:inline-block;margin-left:8px}
         button{background:#3498db;border:none;color:#fff;padding:12px;border-radius:14px;font-size:16px;width:100%;margin:6px 0;cursor:pointer;font-weight:bold}
         button.gray{background:#7f8c8d}
-        input,select{width:100%;padding:12px;margin:6px 0;border:none;border-radius:12px;font-size:16px;background:#34495e;color:#fff}
+        input{width:100%;padding:12px;margin:6px 0;border:none;border-radius:12px;font-size:16px;background:#34495e;color:#fff}
         ul{list-style:none;margin-top:12px}
         li{background:#34495e;padding:12px;border-radius:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
         .done{text-decoration:line-through;opacity:0.6}
         .tg-link{background:#2c3e50;text-align:center;padding:16px;border-radius:20px;margin-top:16px}
         .tg-link a{color:#f1c40f;font-weight:bold;font-size:18px;text-decoration:none}
-        .small{font-size:13px;color:#bdc3c7;margin-top:6px}
     </style>
 </head>
 <body>
@@ -27,11 +26,10 @@
         <div id="userInfo" style="margin-top:6px;"></div>
     </div>
 
-    <div class="card" id="taskPanel">
+    <div class="card">
         <h2>📋 Мои задачи</h2>
         <button id="loadBtn">🔄 Загрузить</button>
-        <ul id="taskList"><li style="color:#bdc3c7;text-align:center">Нажмите "Загрузить"</li></ul>
-        
+        <ul id="taskList"><li style="color:#bdc3c7;text-align:center">Нажмите Загрузить</li></ul>
         <h2 style="margin-top:20px;">➕ Новая задача</h2>
         <input id="titleInp" placeholder="Название">
         <input id="subjInp" placeholder="Предмет">
@@ -40,107 +38,97 @@
     </div>
 
     <div class="tg-link">
-        <p>🤖 Основной помощник</p>
-        <a href="https://t.me/YourBotUsername" target="_blank" id="botLink">@YourBotUsername</a>
-        <div class="small">AI, напоминания и аналитика</div>
+        <p>🤖 Открыть в Telegram</p>
+        <a href="https://t.me/hakatonyeptaBot" target="_blank" id="botLink">@hakatonyeptaBot</a>
     </div>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // ====== TELEGRAM MINI APP INIT ======
-        try {
-            const tg = window.Telegram?.WebApp;
-            if (tg) {
-                tg.ready();
-                tg.expand();
-                // Можно использовать данные пользователя
-                if (tg.initDataUnsafe?.user) {
-                    document.getElementById('userInfo').innerHTML = 
-                        '<small>👤 ' + tg.initDataUnsafe.user.first_name + '</small>';
-                }
-            }
-        } catch(e) {
-            console.log('Не Mini App');
+        const BOT_USERNAME = 'hakatonyeptaBot';
+        document.getElementById('botLink').href = 'https://t.me/' + BOT_USERNAME;
+        document.getElementById('botLink').textContent = '@' + BOT_USERNAME;
+
+        let tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
         }
 
-        // ====== НАСТРОЙКИ ======
-        const BOT_USERNAME = 'AdvancerTrackerBot'; // замени на свой
-        document.getElementById('botLink').href = `https://t.me/${BOT_USERNAME}`;
-        document.getElementById('botLink').textContent = `@${BOT_USERNAME}`;
-
-        // Получаем параметры из URL (user_id, role) либо из Telegram
         const urlParams = new URLSearchParams(window.location.search);
-        const userId = urlParams.get('user_id') || (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) || '123';
-        const userRole = urlParams.get('role') || '1';
+        let userId = urlParams.get('user_id');
+        let userRole = urlParams.get('role') || '1';
+        if (!userId && tg?.initDataUnsafe?.user) {
+            userId = tg.initDataUnsafe.user.id;
+            document.getElementById('userInfo').textContent = 'Привет, ' + tg.initDataUnsafe.user.first_name;
+        } else if (userId) {
+            document.getElementById('userInfo').textContent = 'ID: ' + userId;
+        } else {
+            userId = '123';
+            document.getElementById('userInfo').textContent = 'Гость (ID: 123)';
+        }
         const roleNames = {1:'Ученик',2:'Учитель',3:'Родитель'};
         document.getElementById('roleDisplay').textContent = roleNames[userRole] || 'Гость';
-        if (!document.getElementById('userInfo').innerHTML) {
-            document.getElementById('userInfo').innerHTML = '<small>ID: '+userId+'</small>';
-        }
 
-        let tasks = [
-            { id: 1, title: 'Решить уравнение', subject: 'Алгебра', deadline: '2026-04-25 14:00', done: false },
-            { id: 2, title: 'Прочитать параграф 5', subject: 'История', deadline: '2026-04-26 09:00', done: true }
-        ];
+        let tasks = [];
+
+        async function loadTasks() {
+            try {
+                const res = await fetch('/api/tasks?user_id=' + userId);
+                tasks = await res.json();
+                renderTasks();
+            } catch(e) {
+                document.getElementById('taskList').innerHTML = '<li>Ошибка загрузки</li>';
+            }
+        }
 
         function renderTasks() {
             const list = document.getElementById('taskList');
             list.innerHTML = '';
-            if (tasks.length === 0) {
+            if (!tasks.length) {
                 list.innerHTML = '<li style="color:#bdc3c7;text-align:center">Нет задач</li>';
                 return;
             }
             tasks.forEach(task => {
                 const li = document.createElement('li');
-                li.innerHTML = '<span class="' + (task.done ? 'done' : '') + '"><strong>' + task.title + '</strong> (' + task.subject + ')<br><small>📅 ' + task.deadline + '</small></span>' + (!task.done ? '<button class="gray" style="width:auto;padding:6px 12px;" data-id="' + task.id + '">✅</button>' : '');
+                li.innerHTML = `<span class="${task.done ? 'done' : ''}"><strong>${task.title}</strong> (${task.subject})<br><small>📅 ${task.deadline}</small></span>
+                ${!task.done ? `<button class="gray" style="width:auto;padding:6px 12px;" data-id="${task.id}">✅</button>` : ''}`;
                 list.appendChild(li);
             });
-
             document.querySelectorAll('#taskList .gray').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    const id = parseInt(this.dataset.id);
-                    const task = tasks.find(t => t.id === id);
-                    if (task) {
-                        task.done = true;
-                        renderTasks();
-                        fetch('/api/tasks/' + id, {
-                            method: 'PUT',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({done: true})
-                        }).catch(() => {});
-                    }
+                btn.addEventListener('click', async (e) => {
+                    const id = e.target.dataset.id;
+                    await fetch('/api/tasks/' + id, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({done: true})
+                    });
+                    loadTasks();
                 });
             });
         }
 
-        function addTask() {
+        document.getElementById('loadBtn').addEventListener('click', loadTasks);
+        document.getElementById('addBtn').addEventListener('click', async () => {
             const title = document.getElementById('titleInp').value.trim();
             const subject = document.getElementById('subjInp').value.trim() || 'Без предмета';
             const deadline = document.getElementById('deadInp').value || new Date().toISOString().slice(0,16);
             if (!title) return alert('Введите название');
-            
-            const newTask = {
-                id: Date.now(),
-                title: title,
-                subject: subject,
-                deadline: deadline.replace('T', ' '),
-                done: false
-            };
-            tasks.push(newTask);
+            await fetch('/api/tasks', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    title, subject, deadline: deadline.replace('T', ' '),
+                    for_user_id: parseInt(userId),
+                    from_user_id: parseInt(userId)
+                })
+            });
             document.getElementById('titleInp').value = '';
             document.getElementById('subjInp').value = '';
             document.getElementById('deadInp').value = '';
-            renderTasks();
-            fetch('/api/tasks', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(newTask)
-            }).catch(() => {});
-        }
+            loadTasks();
+        });
 
-        document.getElementById('loadBtn').addEventListener('click', renderTasks);
-        document.getElementById('addBtn').addEventListener('click', addTask);
-        
-        renderTasks();
+        loadTasks();
     </script>
 </body>
 </html>

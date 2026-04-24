@@ -1,3 +1,2 @@
-main.txt
 index.html
 auth

@@ -1,12 +1,6 @@
-FROM gcc:latest AS builder
-WORKDIR /build
-COPY . .
-RUN make main
-
 FROM gcc:latest
 WORKDIR /app
-# Копируем всё из билдера
-COPY --from=builder /build/ .
+COPY . .
+RUN g++ -std=c++11 -pthread -o main main.cpp
 RUN chmod +x main
-
 CMD ["./main", "80", "8"]
